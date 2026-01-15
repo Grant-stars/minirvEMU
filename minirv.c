@@ -1,15 +1,15 @@
 #include<stdio.h>
 #include<stdint.h>
 #include<stdlib.h>
-#define MaxSize 65535
-
+#define ROM_MaxSize 65535
+#define MEM_Maxsize (1U<<20)
 uint32_t PC=0;
 uint32_t R[32];
-
+uint8_t MEM[MEM_Maxsize];
 
 typedef union minirv_ROM{
-    uint8_t M[MaxSize];
-    uint32_t inst[MaxSize/4];
+    uint8_t M[ROM_MaxSize];
+    uint32_t inst[ROM_MaxSize/4];
 }minirv_ROM;
 
 
@@ -75,7 +75,13 @@ uint32_t get_32_bit_U_imm(uint8_t inst0, uint8_t inst1, uint8_t inst2){
     return (((uint32_t)inst0<<24) | ((uint32_t)inst1<<16) | ((((uint32_t)inst2)&0xf0)<<8));
 }
 
+uint8_t get_7_bit_imm(uint8_t inst1){
+    return get_7_bit_funct7(inst1);
+}
 
+uint8_t get_5_bit_imm(inst1, inst2){
+    return get_5_bit_rd(inst1,inst2);
+}
 
 
 
@@ -85,6 +91,11 @@ void reg_write(uint8_t rd, uint32_t val){
     }
     return;
 }
+
+void mem_write(uint32_t addr, uint8_t val){
+    MEM[addr]=val;
+}
+
 
 void test(){
     //取指
@@ -135,8 +146,6 @@ void inst_cycle(){
             //加和
             reg_write(rd,R[rs1]+se_imm);
 
-            //更新
-            PC+=4;
         }
 
         //JALR
@@ -153,6 +162,8 @@ void inst_cycle(){
             
             //跳转
             PC=(se_imm+R[rs1])&(0xFFFFFFFE);
+
+            return ;
         }
 
         //ADD
@@ -166,6 +177,60 @@ void inst_cycle(){
             reg_write(rd,U_imm);
         }
 
+        //LW
+        else if((funct3==0x2) && (opcode==0x03)){
+            uint32_t imm=get_12_bit_imm(inst0,inst1);
+            uint32_t se_imm=((imm>>11)&0x1)==1?(imm|0xFFFFF000):imm;
+            uint32_t addr=R[rs1]+se_imm;
+            uint32_t Byte0=(uint32_t)(MEM[addr+3]);
+            uint32_t Byte1=(uint32_t)(MEM[addr+2]);
+            uint32_t Byte2=(uint32_t)(MEM[addr+1]);
+            uint32_t Byte3=(uint32_t)(MEM[addr]);
+            uint32_t data=(Byte0<<24) | (Byte1<<16) | (Byte2<<8) | Byte3;
+            reg_write(rd, data);
+        }
+
+        //SW
+        else if((funct3==0x2) && (opcode==0x23)){
+            uint32_t imm1=((uint32_t)(get_7_bit_imm(inst0)))<<5;
+            uint32_t imm2=(uint32_t)(get_5_bit_imm(inst2,inst3));
+            uint32_t imm=imm1|imm2;
+            uint32_t se_imm=((imm>>11)&0x1)==1?(imm|0xFFFFF000):imm;
+            uint32_t addr=R[rs1]+se_imm;
+            uint32_t data=R[rs2];
+            uint8_t Byte0=(uint8_t)(data>>24);
+            uint8_t Byte1=(uint8_t)(data>>16);
+            uint8_t Byte2=(uint8_t)(data>>8);
+            uint8_t Byte3=(uint8_t)data;
+            mem_write(addr,Byte3);
+            mem_write(addr+1,Byte2);
+            mem_write(addr+2,Byte1);
+            mem_write(addr+3,Byte0);
+        }
+ 
+        //LBU
+        else if((funct3==0x4) && (opcode==0x03)){
+            uint32_t imm=get_12_bit_imm(inst0,inst1);
+            uint32_t se_imm=((imm>>11)&0x1)==1?(imm|0xFFFFF000):imm;
+            uint32_t addr=R[rs1]+se_imm;
+            uint32_t data=(uint32_t)(MEM[addr]);
+            reg_write(rd,data);
+        }
+
+        //SB
+        else if((funct3==0) && (opcode==0x23)){
+            uint32_t imm1=((uint32_t)(get_7_bit_imm(inst0)))<<5;
+            uint32_t imm2=(uint32_t)(get_5_bit_imm(inst2,inst3));
+            uint32_t imm=imm1|imm2;
+            uint32_t se_imm=((imm>>11)&0x1)==1?(imm|0xFFFFF000):imm;
+            uint32_t addr=R[rs1]+se_imm;
+            uint32_t data=R[rs2];
+            uint8_t Byte=(uint8_t)data;
+            mem_write(addr, Byte);
+        }
+
+        //更新PC
+        PC+=4;
 
 }
 
