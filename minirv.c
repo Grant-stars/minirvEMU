@@ -67,6 +67,18 @@ uint32_t get_12_bit_imm(int8_t inst1, uint8_t inst2){
     return ((((uint32_t)inst1)<<4)|(((uint32_t)inst2)>>4));
 }
 
+uint8_t get_7_bit_funct7(uint8_t inst1){
+    return (inst1>>1);
+}
+
+uint32_t get_32_bit_U_imm(uint8_t inst0, uint8_t inst1, uint8_t inst2){
+    return (((uint32_t)inst0<<24) | ((uint32_t)inst1<<16) | ((((uint32_t)inst2)&0xf0)<<8));
+}
+
+
+
+
+
 void reg_write(uint8_t rd, uint32_t val){
     if(rd!=0){
         R[rd]=val;
@@ -100,16 +112,22 @@ void inst_cycle(){
     //译码
 
     uint8_t opcode=get_7_bit_opcode(inst3);
-    uint8_t funct=get_3_bit_funct3(inst2);
+    uint8_t funct3=get_3_bit_funct3(inst2);
+    uint8_t funct7=get_7_bit_funct7(inst0);
 
+    uint8_t rd=get_5_bit_rd(inst2,inst3);
+    uint8_t rs1=get_5_bit_rs1(inst1,inst2);
+    uint8_t rs2=get_5_bit_rs2(inst0,inst1);
+
+    uint32_t U_imm=get_32_bit_U_imm(inst0,inst1,inst2);
+    
         //ADDI
-        if((opcode==0x13) && (funct==0)){
+        if((opcode==0x13) && (funct3==0)){
             //执行
 
             //译码
             uint32_t imm=get_12_bit_imm(inst0,inst1);
-            uint8_t rd=get_5_bit_rd(inst2,inst3);
-            uint8_t rs1=get_5_bit_rs1(inst1,inst2);
+
 
             //立即数符号扩展
             uint32_t se_imm=((imm>>11)&0x1)==1?(imm|0xFFFFF000):imm;
@@ -122,12 +140,10 @@ void inst_cycle(){
         }
 
         //JALR
-        if((opcode==0x67) && (funct==0)){
+        else if((opcode==0x67) && (funct3==0)){
             //执行
             //译码
             uint32_t imm=get_12_bit_imm(inst0,inst1);
-            uint8_t rd=get_5_bit_rd(inst2,inst3);
-            uint8_t rs1=get_5_bit_rs1(inst1,inst2);
 
             //立即数符号扩展
             uint32_t se_imm=((imm>>11)&0x1)==1?(imm|0xFFFFF000):imm;
@@ -138,6 +154,19 @@ void inst_cycle(){
             //跳转
             PC=(se_imm+R[rs1])&(0xFFFFFFFE);
         }
+
+        //ADD
+        else if((funct7==0) && (funct3==0) && (opcode=0x33)){
+            //执行
+            reg_write(rd,R[rs1]+R[rs2]);
+        }
+
+        //LUI
+        else if(opcode==0x37){
+            reg_write(rd,U_imm);
+        }
+
+
 }
 
 
