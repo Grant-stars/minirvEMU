@@ -20,20 +20,24 @@ typedef union minirv_ROM{
         0x010000e7,  // 0x04: jalr ra, 16(zero)
         0x00c000e7,  // 0x08: jalr ra, 12(zero)
         0x00c00067,  // 0x0c: jalr zero,12(zero)
-        0x00a50513,  // 0x10: addi a0,a0,10
+        0xff650513,  // 0x10: addi a0,a0,-10
         0x00008067   // 0x14: jalr zero,0(ra)
 
         0x01400513：000000010100 00000 000 01010 0010011
         0xfec00513：111111101100 00000 000 01010 0010011
+
+        0x00a50513：000000001010 01010 000 01010 0010011
+        0xff650513：111111110110 01010 000 01010 0010011
+
     */
 
 minirv_ROM ROM={
     .inst={
-        0xfec00513,  // 0x00: addi a0, zero, 20
+        0xfec00513,  // 0x00: addi a0, zero, -20
         0x010000e7,  // 0x04: jalr ra, 16(zero)
         0x00c000e7,  // 0x08: jalr ra, 12(zero)
         0x00c00067,  // 0x0c: jalr zero,12(zero)
-        0x00a50513,  // 0x10: addi a0,a0,10
+        0xff650513,  // 0x10: addi a0,a0,-10
         0x00008067   // 0x14: jalr zero,0(ra)
     }
 
@@ -63,6 +67,12 @@ uint32_t get_12_bit_imm(int8_t inst1, uint8_t inst2){
     return ((((uint32_t)inst1)<<4)|(((uint32_t)inst2)>>4));
 }
 
+void reg_write(uint8_t rd, uint32_t val){
+    if(rd!=0){
+        R[rd]=val;
+    }
+    return;
+}
 
 void test(){
     //取指
@@ -105,7 +115,7 @@ void inst_cycle(){
             uint32_t se_imm=((imm>>11)&0x1)==1?(imm|0xFFFFF000):imm;
 
             //加和
-            R[rd]=R[rs1]+se_imm;
+            reg_write(rd,R[rs1]+se_imm);
 
             //更新
             PC+=4;
@@ -123,8 +133,8 @@ void inst_cycle(){
             uint32_t se_imm=((imm>>11)&0x1)==1?(imm|0xFFFFF000):imm;
 
             //存地址
-            R[rd]=PC+4;
-
+            reg_write(rd,PC+4);
+            
             //跳转
             PC=(se_imm+R[rs1])&(0xFFFFFFFE);
         }
