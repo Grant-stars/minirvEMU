@@ -29,16 +29,20 @@ typedef union minirv_ROM{
         0x00a50513：000000001010 01010 000 01010 0010011
         0xff650513：111111110110 01010 000 01010 0010011
 
+        0x00400593:000000000100 00000 000 01011 0010011    // 0x04: addi a1, zero, 4
+        0x00b50633:0000000 01011 01010 000 01100 0110011    //0x08: add a2, a1, a0
+        0x000015b7:00000000000000000001 01011 0110111       //0x0c: lui 1, a1
+        0x00b60633:0000000 01011 01100 000 01100 0110011    //0x10: add a2, a1, a2
+
     */
 
 minirv_ROM ROM={
     .inst={
         0xfec00513,  // 0x00: addi a0, zero, -20
-        0x010000e7,  // 0x04: jalr ra, 16(zero)
-        0x00c000e7,  // 0x08: jalr ra, 12(zero)
-        0x00c00067,  // 0x0c: jalr zero,12(zero)
-        0xff650513,  // 0x10: addi a0,a0,-10
-        0x00008067   // 0x14: jalr zero,0(ra)
+        0x00400593,  // 0x04: addi a1, zero, 4
+        0x00b50633,  // 0x08: add a2, a1, a0
+        0x000015b7,  // 0x0c: lui 1, a1
+        0x00b60633,  //0x10: add a2, a1, a2
     }
 
 };
@@ -159,11 +163,18 @@ void inst_cycle(){
         else if((funct7==0) && (funct3==0) && (opcode=0x33)){
             //执行
             reg_write(rd,R[rs1]+R[rs2]);
+
+            //更新
+            PC+=4;
         }
 
         //LUI
         else if(opcode==0x37){
+            //执行
             reg_write(rd,U_imm);
+
+            //更新
+            PC+=4;
         }
 
 
@@ -172,13 +183,13 @@ void inst_cycle(){
 
 int main(){
 
-    int j=10;
+    int j=5;
     while(j>0) {
         inst_cycle();
         j--;
     }
     printf("%d\n",PC);
-    printf("%d\n",R[10]);
+    printf("%d %d %d\n",R[10],R[11],R[12]);
 
     return 0;
 }
