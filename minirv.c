@@ -1,7 +1,8 @@
 #include<stdio.h>
 #include<stdint.h>
 #include<stdlib.h>
-#define ROM_MaxSize 65535
+#include <assert.h>
+#define ROM_MaxSize (1U<<20)
 #define MEM_Maxsize (1U<<20)
 uint32_t PC=0;
 uint32_t R[32];
@@ -29,16 +30,52 @@ typedef union minirv_ROM{
         0x00a50513：000000001010 01010 000 01010 0010011
         0xff650513：111111110110 01010 000 01010 0010011
 
+        0x00002083：000000000000 00000 010 00001 0000011    lw 1 0 0
+        0x00004103：000000000000 00000 100 00010 0000011    lbu 2 0 0
+        0x00104183：000000000001 00000 100 00011 0000011    lbu 3 1 0
+        0x00204203：000000000010 00000 100 00100 0000011    lbu 4 2 0
+        0x00304283：000000000011 00000 100 00101 0000011    lbu 5 3 0
+
+        0x00a02023:0000000 01010 00000 010 00000 0100011   sw 0 r[10]
+        0x00b00023:0000000 01011 00000 000 00000 0100011   sb 0 r[11]
+        0x:0000000 01100 00000 000 00001 0100011    sb 1 r[12]
+        0000000 01101 00000 000 00010 0100011   sb 2 r[13]
+        0000000 01110 00000 000 00011 0100011   sb 3 r[14]
+
+        (funct3==0) && (opcode==0x23)
+
     */
 
 minirv_ROM ROM={
-    .inst={
-        0xfec00513,  // 0x00: addi a0, zero, -20
+        .inst={
+            0x00a02023, //sw
+
+            0x00002083, //lw
+
+            0x00004103, //lbu
+            0x00104183,
+            0x00204203,
+            0x00304283,
+
+            0x00b00023, //sb
+            0b00000000110000000000000010100011,
+            0b00000000110100000000000100100011, 
+            0b00000000111000000000000110100011,
+
+            0x00002083, //lw
+
+            0x00004103, //lbu
+            0x00104183,
+            0x00204203,
+            0x00304283,
+
+        /* 0xfec00513,  // 0x00: addi a0, zero, -20
         0x010000e7,  // 0x04: jalr ra, 16(zero)
         0x00c000e7,  // 0x08: jalr ra, 12(zero)
         0x00c00067,  // 0x0c: jalr zero,12(zero)
         0xff650513,  // 0x10: addi a0,a0,-10
         0x00008067   // 0x14: jalr zero,0(ra)
+        */
     }
 
 };
@@ -79,7 +116,7 @@ uint8_t get_7_bit_imm(uint8_t inst1){
     return get_7_bit_funct7(inst1);
 }
 
-uint8_t get_5_bit_imm(inst1, inst2){
+uint8_t get_5_bit_imm(uint8_t inst1, uint8_t inst2){
     return get_5_bit_rd(inst1,inst2);
 }
 
@@ -167,7 +204,7 @@ void inst_cycle(){
         }
 
         //ADD
-        else if((funct7==0) && (funct3==0) && (opcode=0x33)){
+        else if((funct7==0) && (funct3==0) && (opcode==0x33)){
             //执行
             reg_write(rd,R[rs1]+R[rs2]);
         }
@@ -234,16 +271,34 @@ void inst_cycle(){
 
 }
 
+void Init(char *FilePath){
+    FILE* fp=fopen(FilePath, "rb");
+    assert(fp!=NULL);
+    int num1=fread(MEM,1,MEM_Maxsize,fp);
+    assert(num1<MEM_Maxsize);
+    rewind(fp);
+    uint32_t num2=fread(ROM.M,1,ROM_MaxSize,fp);
+    assert(num2<ROM_MaxSize);
+    fclose(fp);
+}
 
 int main(){
-
-    int j=10;
+    // Init("./logisim-bin/mem.bin");
+    R[10]=0x12345678;
+    R[11]=0xef;
+    R[12]=0xcd;
+    R[13]=0xab;
+    R[14]=0x90;
+    int j=15;
     while(j>0) {
         inst_cycle();
         j--;
     }
     printf("%d\n",PC);
-    printf("%d\n",R[10]);
-
+    printf("0x%08x\n",R[1]);
+    printf("0x%02x\n",R[2]);
+    printf("0x%02x\n",R[3]);
+    printf("0x%02x\n",R[4]);
+    printf("0x%02x\n",R[5]);
     return 0;
 }
