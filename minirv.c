@@ -195,11 +195,13 @@ void inst_cycle(){
             uint32_t se_imm=((imm>>11)&0x1)==1?(imm|0xFFFFF000):imm;
 
             //存地址
-            reg_write(rd,PC+4);
-            
+            uint32_t return_addr=PC+4;
+
             //跳转
             PC=(se_imm+R[rs1])&(0xFFFFFFFE);
 
+            reg_write(rd,return_addr);
+            
             return ;
         }
 
@@ -283,22 +285,20 @@ void Init(char *FilePath){
 }
 
 int main(){
-    // Init("./logisim-bin/mem.bin");
+    Init("./logisim-bin/sum.bin");
+    /*
     R[10]=0x12345678;
     R[11]=0xef;
     R[12]=0xcd;
     R[13]=0xab;
     R[14]=0x90;
-    int j=15;
+    */
+    int j=7002;
     while(j>0) {
         inst_cycle();
         j--;
     }
     printf("%d\n",PC);
-    printf("0x%08x\n",R[1]);
-    printf("0x%02x\n",R[2]);
-    printf("0x%02x\n",R[3]);
-    printf("0x%02x\n",R[4]);
-    printf("0x%02x\n",R[5]);
+    printf("0x%08x\n",R[10]);
     return 0;
 }
